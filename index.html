@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Quick Start - Leaflet</title>
+
+  <link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico"/>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="js/own.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+  </style>
+
+
+</head>
+<body>
+
+
+<div id="map" style="width: 600px; height: 400px;"></div>
+<script>
+
+  const map = loadMap();
+
+  fetchJson('./api/track/whole.json')
+  .then(track => {
+    fetchJson('./api/traveler/currentPosition.json')
+    .then(travelerPosition => {
+      const travelerPoint = [travelerPosition.position.lat, travelerPosition.position.lon]
+
+      const nearestPoint = findNearestPoint(track, travelerPoint);
+      const [completedTrackPart, todoTrackPart] = splitTrackPoints(track, nearestPoint)
+
+      console.log("totalDistance:\t\t" + (calculateDistance(track).total / 1000).toFixed(2) + "km")
+      console.log("completedTrackPart:\t" + (calculateDistance(completedTrackPart).total / 1000).toFixed(2) + "km")
+      console.log(JSON.stringify(completedTrackPart))
+      console.log("todoTrackPart:\t\t" + (calculateDistance(todoTrackPart).total / 1000).toFixed(2) + "km")
+      console.log(JSON.stringify(completedTrackPart))
+
+      drawTrack(completedTrackPart, 'darkgreen', 6, 'Done track.', map);
+      drawTrack(todoTrackPart, 'darkred', 6, 'Todo track.', map);
+
+      markPointOnMap(travelerPoint, 'Current Artur location!', map);
+
+      focusMapOn(travelerPoint, 10.4, map)
+    })
+  })
+  fetchJson('./api/traveler/positionHistory.json')
+  .then(track => {
+
+    drawTrack(track.map(p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)]), '#d6c604', 3, 'Real history track.', map);
+  })
+
+
+</script>
+
+
+</body>
+</html>
