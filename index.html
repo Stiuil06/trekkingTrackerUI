@@ -1,68 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <base target="_top">
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>Quick Start - Leaflet</title>
+    <title>Trekking Tracker - Artur</title>
 
-  <link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico"/>
+    <link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico"/>
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-          crossorigin=""></script>
-  <script src="js/own.js"></script>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-  </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="https://kit.fontawesome.com/54812b3d34.js" crossorigin="anonymous"></script>
+    <script src="js/own.js"></script>
 
-
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
+<div class="container">
+    <div class="header">
+        <div class="avatar">
+            <img src="img/artur.png" alt="Artur's Profile Picture">
+        </div>
+        <div class="human-details">
+            <h2>Artur</h2>
+            <span>polska</span>
+        </div>
+        <div class="header__buttons">
+            <a href="#">
+                <img src="img/strava.png" alt="Strava Profile" class="strava-logo"/>
+            </a>
+            <a href="#">
+                <img src="img/garmin.png" alt="Garmin Profile" class="garmin-logo"/>
+            </a>
+        </div>
+    </div>
+    <div class="main">
+        <div class="content">
+            <div class="statistics">
+                <div class="statistic_top">
+                    <div class="statistic__value__bigger red">
+                        <i class="fa-solid fa-heart fa-beat-fade" style="--fa-beat-fade-opacity: 0.67; --fa-beat-fade-scale: 1.075;"></i>
+                        <p>125 BPM</p>
+                    </div>
+                    <div class="statistic__value__bigger green">
+                        <i class="fa-solid fa-spinner"></i>
+                        <p>47%</p>
+                    </div>
+                    <div class="statistic__value__bigger blue">
+                        <i class="fa-solid fa-person-running"></i>
+                        <p>5.4 km/h</p>
+                    </div>
+                </div>
+                <div class="statistic">
+                    <div class="statistic__label">Dystans całkowity</div>
+                    <div class="statistic__value">121.37 km</div>
+                </div>
+                <div class="statistic">
+                    <div class="statistic__label">Przebyty dystans</div>
+                    <div class="statistic__value">73.12 km</div>
+                </div>
+                <div class="statistic">
+                    <div class="statistic__label">Odchylenie od trasy</div>
+                    <div class="statistic__value">0.25 km</div>
+                </div>
+                <hr/>
+                <div class="statistic">
+                    <div class="statistic__label">Wypite płyny</div>
+                    <div class="statistic__value">4.3 L</div>
+                    <div class="break"></div>
+                    <div class="statistic__progressbar">
+                        <div class="statistic__progressbar__done" style="width: 80%"></div>
+                    </div>
+                </div>
+                <div class="statistic">
+                    <div class="statistic__label">Wypite płyny</div>
+                    <div class="statistic__value">4.3 L</div>
+                    <div class="break"></div>
+                    <div class="statistic__progressbar">
+                        <div class="statistic__progressbar__done" style="width: 80%"></div>
+                    </div>
+                </div>
+                <div class="statistic">
+                    <div class="statistic__label">Odchylenie od celu</div>
+                    <div class="statistic__value">5 min.</div>
+                    <div class="break"></div>
+                    <div class="statistic__progressbar">
+                        <div class="statistic__progressbar__done" style="width: 80%"></div>
+                    </div>
+                </div>
+                <hr/>
+                <div class="statistic">
+                    <div class="statistic__label">Na czasie</div>
+                    <div class="break"></div>
+                    <div class="message">
+                        <p>Czas na odpoczynek w hamaczku.</p>
+                        <p style="text-align: right; font-style: normal; font-size: 0.9em; margin-top: 8px">
+                            5 min. temu
+                        </p>
+                    </div>
+                    <div class="break"></div>
+                    <div class="photos">
+                        <div class="photo">
+                            <img src="" alt="Photo 1">
+                        </div>
+                        <div class="photo">
+                            <img src="img/2.png" alt="Photo 2">
+                        </div>
+                        <div class="photo">
+                            <img src="img/3.png" alt="Photo 3">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+    <div class="footer">
+        Crafted with <i class="fa-solid fa-heart fa-beat red"></i> by Artur
+    </div>
+</div>
 
-
-<div id="map" style="width: 600px; height: 400px;"></div>
 <script>
+    const map = loadMap();
 
-  const map = loadMap();
+    fetchJson('./api/track/whole.json')
+        .then(track => {
+            fetchJson('./api/traveler/currentPosition.json')
+                .then(travelerPosition => {
+                    const travelerPoint = [travelerPosition.position.lat, travelerPosition.position.lon]
 
-  fetchJson('./api/track/whole.json')
-  .then(track => {
-    fetchJson('./api/traveler/currentPosition.json')
-    .then(travelerPosition => {
-      const travelerPoint = [travelerPosition.position.lat, travelerPosition.position.lon]
+                    const nearestPoint = findNearestPoint(track, travelerPoint);
+                    const [completedTrackPart, todoTrackPart] = splitTrackPoints(track, nearestPoint)
 
-      const nearestPoint = findNearestPoint(track, travelerPoint);
-      const [completedTrackPart, todoTrackPart] = splitTrackPoints(track, nearestPoint)
+                    console.log("totalDistance:\t\t" + (calculateDistance(track).total / 1000).toFixed(2) + "km")
+                    console.log("completedTrackPart:\t" + (calculateDistance(completedTrackPart).total / 1000).toFixed(2) + "km")
+                    console.log(JSON.stringify(completedTrackPart))
+                    console.log("todoTrackPart:\t\t" + (calculateDistance(todoTrackPart).total / 1000).toFixed(2) + "km")
+                    console.log(JSON.stringify(completedTrackPart))
 
-      console.log("totalDistance:\t\t" + (calculateDistance(track).total / 1000).toFixed(2) + "km")
-      console.log("completedTrackPart:\t" + (calculateDistance(completedTrackPart).total / 1000).toFixed(2) + "km")
-      console.log(JSON.stringify(completedTrackPart))
-      console.log("todoTrackPart:\t\t" + (calculateDistance(todoTrackPart).total / 1000).toFixed(2) + "km")
-      console.log(JSON.stringify(completedTrackPart))
+                    drawTrack(completedTrackPart, 'darkgreen', 6, 'Done track.', map);
+                    drawTrack(todoTrackPart, 'darkred', 6, 'Todo track.', map);
 
-      drawTrack(completedTrackPart, 'darkgreen', 6, 'Done track.', map);
-      drawTrack(todoTrackPart, 'darkred', 6, 'Todo track.', map);
+                    markPointOnMap(travelerPoint, 'Current Artur location!', map);
 
-      markPointOnMap(travelerPoint, 'Current Artur location!', map);
-
-      focusMapOn(travelerPoint, 10.4, map)
-    })
-  })
-  fetchJson('./api/traveler/positionHistory.json')
-  .then(track => {
-
-    drawTrack(track.map(p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)]), '#d6c604', 3, 'Real history track.', map);
-  })
-
+                    focusMapOn(travelerPoint, 10.4, map)
+                })
+        })
+    fetchJson('./api/traveler/positionHistory.json')
+        .then(track => {
+            drawTrack(track.map(p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)]), '#d6c604', 3, 'Real history track.', map);
+        })
 
 </script>
-
-
 </body>
 </html>
