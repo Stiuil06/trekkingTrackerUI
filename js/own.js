@@ -1,3 +1,204 @@
+class GarminAPIClient {
+  apiUrl = 'https://mrbeast.justdev.pl'
+
+  constructor(sessionId) {
+    this.sessionId = sessionId;
+  }
+
+  getTrackPoints(from = 0) {
+    // this.sessionId = 'dc574112-dcb6-45ba-b57f-04b35f5c3662'
+    const url = new URL(this.apiUrl + '/trackpoints.php')
+    url.searchParams.append('sessionId', this.sessionId)
+    url.searchParams.append('from', from)
+
+    return fetchJson(url).then(result => {
+      return result.trackPoints
+    })
+  }
+
+  getCoursePoints() {
+    // this.sessionId = 'ae751506-984f-4f53-9c15-d3a5bcd217bd'
+    const url = new URL(this.apiUrl + '/coursePoints.php')
+    url.searchParams.append('sessionId', this.sessionId)
+    return fetchJson(url).then(result => {
+      return result.courses[0].coursePoints
+    })
+  }
+}
+
+class UIContext {
+  lastContextRefresh //unixTime
+  map //openStreetMap
+  courseCoordinates
+  courseCompletedPart
+  courseTodoPart
+  courseStartCoordinates
+  courseEndCoordinates
+  trackPoints
+  latestTravelerCoordinates
+  heartRateBeatsPerMin
+  currentTravelerSpeed
+  totalTrackDistance
+  totalDistanceTraveled
+  remainingDistance
+
+
+  travelerPointLayerReference
+  courseStartPointLayerReference
+  courseEndPointLayerReference
+  historyTrackLayerReference
+  courseLayerReference
+  ;
+
+  globalProgress() {
+    return this.totalDistanceTraveled / this.totalTrackDistance;
+  }
+}
+
+function buildContext(uiContext) {
+  uiContext.lastContextRefresh = Date.now()
+  uiContext.map = null
+  uiContext.courseCoordinates = []
+  uiContext.courseStartCoordinates = null
+  uiContext.courseEndCoordinates = null
+  uiContext.trackPoints = []
+  uiContext.latestPoint = null
+  uiContext.heartRateBeatsPerMin = '?'
+  uiContext.currentTravelerSpeed = '?'
+  uiContext.totalTrackDistance = '?'
+  uiContext.totalDistanceTraveled = '?'
+  uiContext.remainingDistance = '?'
+  uiContext.allFluids = '?'
+  uiContext.fluidConsumed = '?'
+
+  uiContext.historyTrackLayerReference = null
+}
+
+function enrichUIContextWithTrackPoints(trackPoints, uiContext) {
+  uiContext.trackPoints = uiContext.trackPoints.concat(trackPoints);
+  uiContext.trackPoints = uiContext.trackPoints.filter((record, index, self) =>
+          index === self.findIndex((r) => (
+              r.dateTime === record.dateTime
+          ))
+  );
+  uiContext.trackPoints.sort(
+      (a, b) => new Date(a.dateTime) - new Date(b.dateTime));
+
+  uiContext.latestPoint = trackPoints[trackPoints.length - 1]
+  uiContext.latestTravelerCoordinates = [uiContext.latestPoint.position.lat.toFixed(
+      5), uiContext.latestPoint.position.lon.toFixed(5)]
+
+  uiContext.heartRateBeatsPerMin = uiContext.latestPoint.fitnessPointData.heartRateBeatsPerMin
+  uiContext.totalDistanceTraveled = (uiContext.latestPoint.totalDistanceMeters
+      * 1000).toFixed(2)
+  console.log(uiContext.latestPoint)
+  uiContext.currentTravelerSpeed = (uiContext.latestPoint.speed * 3.6).toFixed(1)
+  uiContext.totalDistanceTraveled = (uiContext.latestPoint.fitnessPointData
+  .totalDistanceMeters/1000).toFixed(2)
+}
+
+function enrichUIContextWithCoursePoints(coursePoints, uiContext) {
+  uiContext.courseCoordinates = coursePoints.map(
+      p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)])
+  uiContext.courseStartCoordinates = uiContext.courseCoordinates[0]
+  uiContext.courseEndCoordinates = uiContext.courseCoordinates[uiContext.courseCoordinates.length
+  - 1]
+  uiContext.totalTrackDistance = (coursePoints[coursePoints.length - 1].distance/1000).toFixed(2)
+
+  if (uiContext.latestTravelerCoordinates != null) {
+    const nearestPoint = findNearestPoint(uiContext.courseCoordinates,
+        uiContext.latestTravelerCoordinates);
+    const [completedTrackPart, todoTrackPart] = splitTrackPoints(
+        uiContext.courseCoordinates, nearestPoint)
+    uiContext.courseCompletedPart = completedTrackPart
+    uiContext.courseTodoPart = todoTrackPart
+    uiContext.remainingDistance = (calculateDistance(todoTrackPart).total/1000).toFixed(2)
+  }
+}
+
+function updateUI(uiContext) {
+  updateUIElement('heartRateBeatsPerMin',
+      uiContext.heartRateBeatsPerMin + ' BPM')
+  updateUIElement('globalProgress',
+      (uiContext.globalProgress() * 100).toFixed(2) + ' %')
+  updateUIElement('currentTravelerSpeed',
+      uiContext.currentTravelerSpeed + ' km/h')
+
+  updateUIElement('totalTrackDistance', uiContext.totalTrackDistance + ' km')
+  updateUIElement('totalDistanceTraveled',
+      uiContext.totalDistanceTraveled + ' km')
+  updateUIElement('remainingDistance', uiContext.remainingDistance + ' km')
+
+  updateUIElement('fluidConsumed',
+      uiContext.fluidConsumed + ' L / ' + uiContext.allFluids + ' L')
+  updateProgressBar('fluidConsumedBar',
+      (uiContext.fluidConsumed / uiContext.allFluids))
+
+  if (uiContext.trackPoints != null) {
+    if (uiContext.historyTrackLayerReference != null) {
+      uiContext.map.removeLayer(uiContext.historyTrackLayerReference)
+    }
+    uiContext.historyTrackLayerReference = drawTrack(
+        uiContext.trackPoints.map(
+            p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)]),
+        '#d6c604',
+        3,
+        'Real history track.',
+        uiContext.map);
+  }
+
+  if (uiContext.courseCoordinates.length > 0) {
+    if (uiContext.courseLayerReference != null) {
+      uiContext.map.removeLayer(uiContext.courseLayerReference)
+    }
+    if (uiContext.courseStartPointLayerReference != null) {
+      uiContext.map.removeLayer(uiContext.courseStartPointLayerReference)
+    }
+    uiContext.courseStartPointLayerReference = markPointOnMap(
+        uiContext.courseStartCoordinates, 'Start', uiContext.map);
+    if (uiContext.courseEndPointLayerReference != null) {
+      uiContext.map.removeLayer(uiContext.courseEndPointLayerReference)
+    }
+    uiContext.courseEndPointLayerReference = markPointOnMap(
+        uiContext.courseEndCoordinates, 'Meta', uiContext.map);
+
+    if (uiContext.latestTravelerCoordinates != null) {
+
+      uiContext.courseLayerReference = []
+      uiContext.courseLayerReference[0] = drawTrack(
+          uiContext.courseCompletedPart, 'darkgreen', 6, 'Done track.',
+          uiContext.map);
+      uiContext.courseLayerReference[1] = drawTrack(uiContext.courseTodoPart,
+          'darkred', 6, 'Todo track.', uiContext.map);
+    } else {
+      uiContext.courseLayerReference = drawTrack(
+          uiContext.courseCoordinates,
+          'blue',
+          6,
+          'Planned track.',
+          uiContext.map);
+    }
+  }
+
+  if (uiContext.latestTravelerCoordinates != null) {
+    if (uiContext.travelerPointLayerReference != null) {
+      uiContext.map.removeLayer(uiContext.travelerPointLayerReference)
+    }
+    uiContext.travelerPointLayerReference = markPointOnMap(
+        uiContext.latestTravelerCoordinates, 'Current Artur location!',
+        uiContext.map);
+    focusMapOn(uiContext.latestTravelerCoordinates, 17, uiContext.map)
+  }
+}
+
+function updateUIElement(elementId, value) {
+  document.getElementById(elementId).innerText = value;
+}
+
+function updateProgressBar(progressBarId, value) {
+  document.getElementById(progressBarId).style.width = (value * 100) + '%'
+}
+
 function loadMap() {
   const map = L.map('map').setView([0, 0], 0);
   const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -7,9 +208,9 @@ function loadMap() {
   return map
 }
 
-function fetchJson(trackPath) {
+function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    fetch(trackPath)
+    fetch(url)
     .then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
@@ -22,7 +223,6 @@ function fetchJson(trackPath) {
     });
   })
 }
-
 
 // Function to calculate distance between two GPS points using Haversine formula
 function haversine(lat1, lon1, lat2, lon2) {
@@ -47,7 +247,8 @@ function findNearestPoint(trackPoints, currentPoint) {
   let minDistance = Infinity;
   let nearestPoint = null;
   trackPoints.forEach(point => {
-    const distance = haversine(point[0], point[1], currentPoint[0], currentPoint[1]);
+    const distance = haversine(point[0], point[1], currentPoint[0],
+        currentPoint[1]);
     if (distance < minDistance) {
       minDistance = distance;
       nearestPoint = point;
@@ -62,12 +263,12 @@ function splitTrackPoints(trackPoints, point) {
     console.error("Point not found in trackPoints list.");
     return [trackPoints, []]; // Return original list if point not found
   }
-  const pointsBefore = trackPoints.slice(0, index); // Points before the given point
+  const pointsBefore = trackPoints.slice(0, index + 1); // Points before the given point
   const pointsAfter = trackPoints.slice(index); // Points after the given point
   return [pointsBefore, pointsAfter];
 }
 
-function calculateDistanceBetween (wpt1, wpt2) {
+function calculateDistanceBetween(wpt1, wpt2) {
   let latlng1 = {};
   latlng1.lat = wpt1[0];
   latlng1.lon = wpt1[1];
@@ -79,7 +280,8 @@ function calculateDistanceBetween (wpt1, wpt2) {
       lat2 = latlng2.lat * rad,
       sinDLat = Math.sin((latlng2.lat - latlng1.lat) * rad / 2),
       sinDLon = Math.sin((latlng2.lon - latlng1.lon) * rad / 2),
-      a = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon * sinDLon,
+      a = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLon
+          * sinDLon,
       c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return 6371000 * c;
 }
@@ -89,7 +291,7 @@ function calculateDistance(points) {
   let totalDistance = 0;
   let cumulDistance = [];
   for (var i = 0; i < points.length - 1; i++) {
-    totalDistance += calculateDistanceBetween(points[i],points[i+1]);
+    totalDistance += calculateDistanceBetween(points[i], points[i + 1]);
     cumulDistance[i] = totalDistance;
   }
   cumulDistance[points.length - 1] = totalDistance;
@@ -101,7 +303,12 @@ function calculateDistance(points) {
 }
 
 function drawTrack(coordinates, color, weight = 6, description, map) {
-  return L.polyline(coordinates, { weight: weight, color: color }).addTo(map).bindPopup(description);
+  if (coordinates.length > 0) {
+    return L.polyline(coordinates, {weight: weight, color: color}).addTo(
+        map).bindPopup(description);
+  } else {
+    return null
+  }
 }
 
 function markPointOnMap(position, description, map) {
