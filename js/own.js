@@ -187,7 +187,6 @@ function updateUI(uiContext) {
     uiContext.travelerPointLayerReference = markPointOnMap(
         uiContext.latestTravelerCoordinates, 'Current Artur location!',
         uiContext.map);
-    focusMapOn(uiContext.latestTravelerCoordinates, 17, uiContext.map)
   }
 }
 

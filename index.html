@@ -126,6 +126,10 @@
       console.log('trackPoints.length:' + trackPoints.length)
       enrichUIContextWithTrackPoints(trackPoints, uiContext)
       updateUI(uiContext)
+
+      if (uiContext.latestTravelerCoordinates != null) {
+        focusMapOn(uiContext.latestTravelerCoordinates, 17, uiContext.map)
+      }
     }
 
     garminClient.getCoursePoints(0)
