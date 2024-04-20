@@ -95,15 +95,6 @@ function enrichUIContextWithTrackPoints(trackPoints, uiContext) {
   uiContext.currentTravelerSpeed = (uiContext.latestPoint.speed * 3.6).toFixed(1)
   uiContext.totalDistanceTraveled = (uiContext.latestPoint.fitnessPointData
   .totalDistanceMeters/1000).toFixed(2)
-}
-
-function enrichUIContextWithCoursePoints(coursePoints, uiContext) {
-  uiContext.courseCoordinates = coursePoints.map(
-      p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)])
-  uiContext.courseStartCoordinates = uiContext.courseCoordinates[0]
-  uiContext.courseEndCoordinates = uiContext.courseCoordinates[uiContext.courseCoordinates.length
-  - 1]
-  uiContext.totalTrackDistance = (coursePoints[coursePoints.length - 1].distance/1000).toFixed(2)
 
   if (uiContext.latestTravelerCoordinates != null) {
     const nearestPoint = findNearestPoint(uiContext.courseCoordinates,
@@ -114,6 +105,16 @@ function enrichUIContextWithCoursePoints(coursePoints, uiContext) {
     uiContext.courseTodoPart = todoTrackPart
     uiContext.remainingDistance = (calculateDistance(todoTrackPart).total/1000).toFixed(2)
   }
+}
+
+function enrichUIContextWithCoursePoints(coursePoints, uiContext) {
+  uiContext.courseCoordinates = coursePoints.map(
+      p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)])
+  uiContext.courseStartCoordinates = uiContext.courseCoordinates[0]
+  uiContext.courseEndCoordinates = uiContext.courseCoordinates[uiContext.courseCoordinates.length
+  - 1]
+  uiContext.totalTrackDistance = (coursePoints[coursePoints.length - 1].distance/1000).toFixed(2)
+
 }
 
 function updateUI(uiContext) {

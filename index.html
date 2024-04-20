@@ -116,8 +116,11 @@
   uiContext.map = loadMap();
   updateUI(uiContext)
 
-  const garminClient = new GarminAPIClient('d9093487-bf0d-43cc-8b3f-4533310c03a4')
-  // const garminClient = new GarminAPIClient('2c39f6d4-eb12-4a89-81ef-810721a5e1e3')
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  const sessionId = urlParams.get('sessionId');
+
+  const garminClient = new GarminAPIClient(sessionId)
 
   console.log('init')
   garminClient.getTrackPoints(0)
@@ -150,12 +153,12 @@
         updateUI(uiContext)
       }
 
-      garminClient.getCoursePoints(0)
-      .then(coursePoints => {
-        console.log('coursePoints.length:' + coursePoints.length)
-        enrichUIContextWithCoursePoints(coursePoints, uiContext)
-        updateUI(uiContext)
-      })
+      // garminClient.getCoursePoints(0)
+      // .then(coursePoints => {
+      //   console.log('coursePoints.length:' + coursePoints.length)
+      //   enrichUIContextWithCoursePoints(coursePoints, uiContext)
+      //   updateUI(uiContext)
+      // })
     })
   },5 * 1000)
 
