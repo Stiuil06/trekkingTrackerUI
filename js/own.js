@@ -1,8 +1,43 @@
-class GarminAPIClient {
+function getSessionId() {
+  return fetchText('https://mrbeast.justdev.pl/api/sessionId')
+}
+
+class BeastAPIClient {
   apiUrl = 'https://mrbeast.justdev.pl'
 
   constructor(sessionId) {
     this.sessionId = sessionId;
+  }
+
+  getParameters() {
+    const url = new URL(this.apiUrl + '/api/parameters.json')
+    return fetchJson(url).then(parameters => {
+      return parameters.reduce((prev, current) => {
+        return (prev.timestamp > current.timestamp) ? prev : current;
+      })
+    })
+  }
+
+  getMessages() {
+    const url = new URL(this.apiUrl + '/api/messages.json')
+    return fetchJson(url).then(messages => {
+      messages.sort((a, b) => b.timestamp - a.timestamp);
+      return messages.slice(0, 3);
+    })
+  }
+
+  getPhotos() {
+    const url = new URL(this.apiUrl + '/api/photos.json')
+    return fetchJson(url).then(messages => {
+      messages.sort((a, b) => b.timestamp - a.timestamp);
+
+      return messages.map(obj => ({
+        ...obj,
+        filename: this.apiUrl + '/api/' + obj.filename
+
+      })).slice(0, 3);
+
+    })
   }
 
   getTrackPoints(from = 0) {
@@ -21,7 +56,12 @@ class GarminAPIClient {
     const url = new URL(this.apiUrl + '/coursePoints.php')
     url.searchParams.append('sessionId', this.sessionId)
     return fetchJson(url).then(result => {
-      return result.courses[0].coursePoints
+      if (result.courses.length > 0) {
+        return result.courses[0].coursePoints
+      } else {
+
+        return []
+      }
     })
   }
 }
@@ -41,7 +81,9 @@ class UIContext {
   totalTrackDistance
   totalDistanceTraveled
   remainingDistance
-
+  allFluids
+  fluidConsumed
+  caloriesBurned
 
   travelerPointLayerReference
   courseStartPointLayerReference
@@ -70,6 +112,7 @@ function buildContext(uiContext) {
   uiContext.remainingDistance = '?'
   uiContext.allFluids = '?'
   uiContext.fluidConsumed = '?'
+  uiContext.caloriesBurned = '?'
 
   uiContext.historyTrackLayerReference = null
 }
@@ -92,9 +135,10 @@ function enrichUIContextWithTrackPoints(trackPoints, uiContext) {
   uiContext.totalDistanceTraveled = (uiContext.latestPoint.totalDistanceMeters
       * 1000).toFixed(2)
   console.log(uiContext.latestPoint)
-  uiContext.currentTravelerSpeed = (uiContext.latestPoint.speed * 3.6).toFixed(1)
+  uiContext.currentTravelerSpeed = (uiContext.latestPoint.speed * 3.6).toFixed(
+      1)
   uiContext.totalDistanceTraveled = (uiContext.latestPoint.fitnessPointData
-  .totalDistanceMeters/1000).toFixed(2)
+      .totalDistanceMeters / 1000).toFixed(2)
 
   if (uiContext.latestTravelerCoordinates != null) {
     const nearestPoint = findNearestPoint(uiContext.courseCoordinates,
@@ -103,7 +147,8 @@ function enrichUIContextWithTrackPoints(trackPoints, uiContext) {
         uiContext.courseCoordinates, nearestPoint)
     uiContext.courseCompletedPart = completedTrackPart
     uiContext.courseTodoPart = todoTrackPart
-    uiContext.remainingDistance = (calculateDistance(todoTrackPart).total/1000).toFixed(2)
+    uiContext.remainingDistance = (calculateDistance(todoTrackPart).total
+        / 1000).toFixed(2)
   }
 }
 
@@ -113,7 +158,8 @@ function enrichUIContextWithCoursePoints(coursePoints, uiContext) {
   uiContext.courseStartCoordinates = uiContext.courseCoordinates[0]
   uiContext.courseEndCoordinates = uiContext.courseCoordinates[uiContext.courseCoordinates.length
   - 1]
-  uiContext.totalTrackDistance = (coursePoints[coursePoints.length - 1].distance/1000).toFixed(2)
+  uiContext.totalTrackDistance = (coursePoints[coursePoints.length - 1].distance
+      / 1000).toFixed(2)
 
 }
 
@@ -129,11 +175,23 @@ function updateUI(uiContext) {
   updateUIElement('totalDistanceTraveled',
       uiContext.totalDistanceTraveled + ' km')
   updateUIElement('remainingDistance', uiContext.remainingDistance + ' km')
+  updateUIElement('caloriesBurned', uiContext.caloriesBurned + ' kcal')
 
   updateUIElement('fluidConsumed',
       uiContext.fluidConsumed + ' L / ' + uiContext.allFluids + ' L')
   updateProgressBar('fluidConsumedBar',
       (uiContext.fluidConsumed / uiContext.allFluids))
+
+  updateUIElement('message1', uiContext.message1)
+  updateUIElement('message1time', uiContext.message1time)
+  updateUIElement('message2', uiContext.message2)
+  updateUIElement('message2time', uiContext.message2time)
+  updateUIElement('message3', uiContext.message3)
+  updateUIElement('message3time', uiContext.message3time)
+
+  updatePhoto('photo1', uiContext.photo1Src, uiContext.photo1alt)
+  updatePhoto('photo2', uiContext.photo2Src, uiContext.photo2alt)
+  updatePhoto('photo3', uiContext.photo3Src, uiContext.photo3alt)
 
   if (uiContext.trackPoints != null) {
     if (uiContext.historyTrackLayerReference != null) {
@@ -195,6 +253,14 @@ function updateUIElement(elementId, value) {
   document.getElementById(elementId).innerText = value;
 }
 
+function updatePhoto(photoId, src, alt) {
+  if (src) {
+    var photo = document.getElementById(photoId);
+    photo.src = src
+    photo.alt = alt
+  }
+}
+
 function updateProgressBar(progressBarId, value) {
   document.getElementById(progressBarId).style.width = (value * 100) + '%'
 }
@@ -216,6 +282,22 @@ function fetchJson(url) {
         throw new Error('Network response was not ok');
       }
       resolve(response.json());
+    })
+    .catch(error => {
+      console.error('There was a problem with the fetch operation:', error);
+      reject(error)
+    });
+  })
+}
+
+function fetchText(url) {
+  return new Promise((resolve, reject) => {
+    fetch(url)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      resolve(response.text());
     })
     .catch(error => {
       console.error('There was a problem with the fetch operation:', error);
@@ -319,3 +401,102 @@ function focusMapOn(point, zoom, map) {
   return map.setView(point, zoom)
 }
 
+function trackLoader(apiClient, uiContext) {
+  apiClient.getTrackPoints(0)
+  .then(trackPoints => {
+    if (trackPoints.length > 0) {
+      console.log('trackPoints.length:' + trackPoints.length)
+      enrichUIContextWithTrackPoints(trackPoints, uiContext)
+      updateUI(uiContext)
+
+      if (uiContext.latestTravelerCoordinates != null) {
+        focusMapOn(uiContext.latestTravelerCoordinates, 17, uiContext.map)
+      }
+    }
+
+    apiClient.getCoursePoints()
+    .then(coursePoints => {
+      console.log('coursePoints.length:' + coursePoints.length)
+      enrichUIContextWithCoursePoints(coursePoints, uiContext)
+      updateUI(uiContext)
+    })
+  })
+
+  setInterval(() => {
+    apiClient.getTrackPoints(0)
+    .then(trackPoints => {
+      if (trackPoints.length > 0) {
+        console.log('trackPoints.length:' + trackPoints.length)
+        enrichUIContextWithTrackPoints(trackPoints, uiContext)
+        updateUI(uiContext)
+      }
+    })
+  }, 10 * 1000)
+}
+
+function parametersLoader(apiClient, uiContext) {
+  apiClient.getParameters()
+  .then(parameters => {
+    uiContext.fluidConsumed = parameters.fluids_consumed;
+    uiContext.allFluids = parameters.total_fluids;
+    uiContext.caloriesBurned = parameters.calories_burned;
+    updateUI(uiContext)
+  })
+
+  setInterval(() => {
+    apiClient.getParameters()
+    .then(parameters => {
+      uiContext.fluidConsumed = parameters.fluids_consumed;
+      uiContext.allFluids = parameters.total_fluids;
+      uiContext.caloriesBurned = parameters.calories_burned;
+      updateUI(uiContext)
+    })
+  }, 60 * 1000)
+}
+
+function messagesLoader(apiClient, uiContext) {
+  apiClient.getMessages()
+  .then(messages => {
+    uiContext.message1 = messages[0].content;
+    uiContext.message1time = timeSince(messages[0].timestamp);
+    uiContext.message2 = messages[1].content;
+    uiContext.message2time = timeSince(messages[1].timestamp);
+    uiContext.message3 = messages[2].content;
+    uiContext.message3time = timeSince(messages[2].timestamp);
+    updateUI(uiContext)
+  })
+
+  setInterval(() => {
+    apiClient.getMessages()
+    .then(messages => {
+      uiContext.message1 = messages[0].content;
+      uiContext.message1time = timeSince(messages[0].timestamp);
+      uiContext.message2 = messages[1].content;
+      uiContext.message2time = timeSince(messages[1].timestamp);
+      uiContext.message3 = messages[2].content;
+      uiContext.message3time = timeSince(messages[2].timestamp);
+      updateUI(uiContext)
+    })
+  }, 60 * 1000)
+}
+
+function photosLoader(apiClient, uiContext) {
+  apiClient.getPhotos()
+  .then(photos => {
+    if (photos.length >= 1) {
+      uiContext.photo1alt = photos[0].title
+      uiContext.photo1Src = photos[0].filename
+    }
+
+    if (photos.length >= 2) {
+      uiContext.photo2alt = photos[1].title
+      uiContext.photo2Src = photos[1].filename
+    }
+
+    if (photos.length >= 3) {
+      uiContext.photo3alt = photos[2].title
+      uiContext.photo3Src = photos[2].filename
+    }
+    updateUI(uiContext)
+  })
+}

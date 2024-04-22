@@ -14,6 +14,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
   <script src="https://kit.fontawesome.com/54812b3d34.js" crossorigin="anonymous"></script>
+  <script src="js/time.js"></script>
   <script src="js/own.js"></script>
 
   <link rel="stylesheet" href="css/reset.css">
@@ -33,7 +34,7 @@
       <a href="https://www.strava.com/athletes/120585928" target="_blank">
         <img src="img/strava.png" alt="Strava Profile" class="strava-logo"/>
       </a>
-      <a href="#">
+      <a id="garminLiveTrackUrl" href="#">
         <img src="img/garmin.png" alt="Garmin Profile" class="garmin-logo"/>
       </a>
     </div>
@@ -67,6 +68,10 @@
           <div class="statistic__label">Pozostały dystans</div>
           <div class="statistic__value" id="remainingDistance">? km</div>
         </div>
+        <div class="statistic">
+          <div class="statistic__label">Spalone kalorie</div>
+          <div class="statistic__value" id="caloriesBurned">? kcal</div>
+        </div>
 
         <hr/>
         <div class="statistic">
@@ -83,21 +88,29 @@
           <div class="statistic__label">Na czasie</div>
           <div class="break"></div>
           <div class="message">
-            <p>Czas na odpoczynek w hamaczku.</p>
-            <p style="text-align: right; font-style: normal; font-size: 0.9em; margin-top: 8px">
-              5 min. temu
-            </p>
+            <p id="message1">?</p>
+            <p id="message1time" style="text-align: right; font-style: normal; font-size: 0.9em; margin-top: 8px">?</p>
+          </div>
+          <div class="break"></div>
+          <div class="message">
+            <p id="message2">?</p>
+            <p id="message2time" style="text-align: right; font-style: normal; font-size: 0.9em; margin-top: 8px">?</p>
+          </div>
+          <div class="break"></div>
+          <div class="message">
+            <p id="message3">?</p>
+            <p id="message3time" style="text-align: right; font-style: normal; font-size: 0.9em; margin-top: 8px">?</p>
           </div>
           <div class="break"></div>
           <div class="photos">
             <div class="photo">
-              <img src="" alt="Photo 1">
+              <img id="photo1" src="" alt="Photo 1">
             </div>
             <div class="photo">
-              <img src="img/2.png" alt="Photo 2">
+              <img id="photo2" src="" alt="Photo 2">
             </div>
             <div class="photo">
-              <img src="img/3.png" alt="Photo 3">
+              <img id="photo3" src="" alt="Photo 3">
             </div>
           </div>
         </div>
@@ -116,86 +129,18 @@
   uiContext.map = loadMap();
   updateUI(uiContext)
 
-  const queryString = window.location.search;
-  const urlParams = new URLSearchParams(queryString);
-  const sessionId = urlParams.get('sessionId');
-
-  const garminClient = new GarminAPIClient(sessionId)
-
-  console.log('init')
-  garminClient.getTrackPoints(0)
-  .then(trackPoints => {
-    if(trackPoints.length > 0){
-      console.log('trackPoints.length:' + trackPoints.length)
-      enrichUIContextWithTrackPoints(trackPoints, uiContext)
-      updateUI(uiContext)
-
-      if (uiContext.latestTravelerCoordinates != null) {
-        focusMapOn(uiContext.latestTravelerCoordinates, 17, uiContext.map)
-      }
-    }
-
-    garminClient.getCoursePoints(0)
-    .then(coursePoints => {
-      console.log('coursePoints.length:' + coursePoints.length)
-      enrichUIContextWithCoursePoints(coursePoints, uiContext)
-      updateUI(uiContext)
-    })
+  getSessionId()
+  .then(sessionId => {
+    const apiClient = new BeastAPIClient(sessionId)
+    trackLoader(apiClient, uiContext)
+    parametersLoader(apiClient, uiContext)
+    messagesLoader(apiClient, uiContext)
+    photosLoader(apiClient, uiContext)
   })
 
-  setInterval(()=>{
-    console.log('interval')
-    garminClient.getTrackPoints(0)
-    .then(trackPoints => {
-      if(trackPoints.length > 0){
-        console.log('trackPoints.length:' + trackPoints.length)
-        enrichUIContextWithTrackPoints(trackPoints, uiContext)
-        updateUI(uiContext)
-      }
-
-      // garminClient.getCoursePoints(0)
-      // .then(coursePoints => {
-      //   console.log('coursePoints.length:' + coursePoints.length)
-      //   enrichUIContextWithCoursePoints(coursePoints, uiContext)
-      //   updateUI(uiContext)
-      // })
-    })
-  },5 * 1000)
 
 
 
-  // fetchJson('./api/track/whole.json _zxc')
-  // .then(track => {
-  //   fetchJson('./api/traveler/currentPosition.json _zcx')
-  //   .then(travelerPosition => {
-  //     const travelerPoint = [travelerPosition.position.lat, travelerPosition.position.lon]
-  //
-  //     const nearestPoint = findNearestPoint(track, travelerPoint);
-  //     const [completedTrackPart, todoTrackPart] = splitTrackPoints(track, nearestPoint)
-  //
-  //     console.log("totalDistance:\t\t" + (calculateDistance(track).total / 1000).toFixed(2) + "km")
-  //     console.log("completedTrackPart:\t" + (calculateDistance(completedTrackPart).total / 1000).toFixed(2) + "km")
-  //     console.log(JSON.stringify(completedTrackPart))
-  //     console.log("todoTrackPart:\t\t" + (calculateDistance(todoTrackPart).total / 1000).toFixed(2) + "km")
-  //     console.log(JSON.stringify(completedTrackPart))
-  //
-  //     drawTrack(completedTrackPart, 'darkgreen', 6, 'Done track.', map);
-  //     drawTrack(todoTrackPart, 'darkred', 6, 'Todo track.', map);
-  //
-  //     markPointOnMap(travelerPoint, 'Current Artur location!', map);
-  //
-  //     focusMapOn(travelerPoint, 10.4, map)
-  //   })
-  // })
-  // // fetchJson('./api/traveler/positionHistory.json')
-  // // .then(track => {
-  // //   drawTrack(track.map(p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)]), '#d6c604', 3, 'Real history track.', map);
-  // // })
-  // fetchJson('https://mrbeast.justdev.pl/?sessionId=dc574112-dcb6-45ba-b57f-04b35f5c3662&from=0')
-  // .then(garminResult => {
-  //     drawTrack(garminResult.trackPoints.map(p => [p.position.lat.toFixed(5), p.position.lon.toFixed(5)]), '#d6c604', 3, 'Real history track.', map);
-  //
-  // })
 
 
 </script>
