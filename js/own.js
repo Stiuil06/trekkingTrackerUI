@@ -276,7 +276,7 @@ function loadMap() {
 
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    fetch(url)
+    fetch(url, {cache: "no-store"})
     .then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
